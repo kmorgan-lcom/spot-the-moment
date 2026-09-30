@@ -1,0 +1,16 @@
+{
+  "name": "spot-the-moment",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create spot-the-moment-db",
+    "db:migrate": "wrangler d1 execute spot-the-moment-db --remote --file=./migrations/0001_init.sql",
+    "db:migrate:local": "wrangler d1 execute spot-the-moment-db --local --file=./migrations/0001_init.sql",
+    "db:seed": "wrangler d1 execute spot-the-moment-db --remote --file=./seed-private.sql",
+    "db:seed:local": "wrangler d1 execute spot-the-moment-db --local --file=./seed-private.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

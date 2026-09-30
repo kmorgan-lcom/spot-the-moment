@@ -1,0 +1,23 @@
+{
+  // One Worker serves both the page and its API, with a D1 database behind it.
+  // Deploy with `npx wrangler deploy` — there is no build step; `public/` is
+  // shipped as-is.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spot-the-moment",
+  "main": "src/worker/index.js",
+  "compatibility_date": "2026-09-30",
+
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "spot-the-moment-db",
+      // `npx wrangler d1 create spot-the-moment-db` prints this. Paste it here.
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
-/* Spot the Moment — shared state lives in Supabase, identity is an anonymous
-   auth session. Nothing here is trusted: every rule below is also enforced by
-   row-level security and the SECURITY DEFINER functions in supabase/schema.sql.
-   The answer-key notes and takeaways are deliberately absent from this file —
-   they are seeded privately and only become readable at stage 2. */
+/* Spot the Moment — the browser renders; the Worker decides. Nobody signs in:
+   identity is a random id kept in localStorage, only so the page knows which
+   stickies are yours. Every rule that matters is enforced in src/worker/index.js,
+   which simply never sends what you aren't allowed to see. The answer-key notes
+   and takeaways are deliberately absent from this file. */
 
 const CONVS = {
   A: {
@@ -72,7 +72,7 @@ const state = {
   notice: null,
 };
 
-let sb = null;
+const API = "/api";
 
 const $ = (s) => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -219,21 +219,17 @@ function renderFac() {
 async function setStage(conv, stage) {
   state.control = { ...state.control, [conv]: stage };
   render();
-  try {
-    const { error } = await sb.rpc("set_stage", { passcode: state.facPass, conversation: conv, stage });
-    if (error) throw error;
-    await refetchAll();
-  } catch (e) { announce("Couldn't update the room. Try again."); await refetchAll(); }
+  try { await api("/control", { passcode: state.facPass, action: "stage", conversation: conv, stage }); }
+  catch (e) { announce("Couldn't update the room. Try again."); }
+  await refetchAll();
 }
 
 async function setActive(conv) {
   state.control = { ...state.control, active: conv };
   render();
-  try {
-    const { error } = await sb.rpc("set_active", { passcode: state.facPass, conversation: conv });
-    if (error) throw error;
-    await refetchAll();
-  } catch (e) { announce("Couldn't update the room. Try again."); await refetchAll(); }
+  try { await api("/control", { passcode: state.facPass, action: "active", conversation: conv }); }
+  catch (e) { announce("Couldn't update the room. Try again."); }
+  await refetchAll();
 }
 
 $("#unlockB").addEventListener("click", () => {
@@ -246,8 +242,7 @@ $("#clearNo").addEventListener("click", () => { $("#clearConfirm").hidden = true
 $("#clearYes").addEventListener("click", async () => {
   $("#clearConfirm").hidden = true; $("#clearBtn").hidden = false;
   try {
-    const { error } = await sb.rpc("clear_all", { passcode: state.facPass });
-    if (error) throw error;
+    await api("/control", { passcode: state.facPass, action: "clear" });
     state.tab = "A";
     await refetchAll();
     announce("All stickies cleared.");
@@ -258,33 +253,23 @@ $("#clearYes").addEventListener("click", async () => {
 async function addSticky(lineId, text, kind) {
   const conv = lineId[0];
   try {
-    const { error } = await sb.from("stickies").insert({ conversation: conv, line_id: lineId, text, kind });
-    if (error) throw error;
+    await api("/sticky", { conversation: conv, line_id: lineId, text, kind });
     announce("Sticky added.");
-    await refetchStickies();
-  } catch (e) {
-    announce("That sticky didn't save. Try again.");
-  }
+    await refetchAll();
+  } catch (e) { announce("That sticky didn't save. Try again."); }
 }
 async function removeSticky(s) {
   try {
-    const { error } = await sb.from("stickies").delete().eq("id", s.id);
-    if (error) throw error;
+    await api("/sticky/delete", { id: s.id });
     announce("Sticky deleted.");
-    await refetchStickies();
+    await refetchAll();
   } catch (e) { announce("Couldn't delete that sticky."); }
 }
 async function toggleVote(s) {
   if (!state.uid) return;
   try {
-    if (iVoted(s.id)) {
-      const { error } = await sb.from("votes").delete().eq("sticky_id", s.id).eq("voter", state.uid);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from("votes").insert({ sticky_id: s.id });
-      if (error) throw error;
-    }
-    await refetchVotes();
+    await api(iVoted(s.id) ? "/vote/delete" : "/vote", { sticky_id: s.id });
+    await refetchAll();
   } catch (e) { announce("Couldn't record that +1."); }
 }
 
@@ -301,82 +286,60 @@ for (const t of document.querySelectorAll(".tab")) {
 
 render();
 
-/* ---------- fetching ---------- */
-async function refetchControl() {
-  const { data, error } = await sb.from("control").select("active_conversation, stage_a, stage_b").eq("id", 1).maybeSingle();
-  if (error || !data) return false;
-  const prev = state.control.active;
-  state.control = { active: data.active_conversation || "A", A: data.stage_a || 0, B: data.stage_b || 0 };
-  if (prev !== "B" && state.control.active === "B" && !state.isFac) { state.tab = "B"; state.openComposer = null; announce("Conversation 2 is open."); }
-  if (state.control.active !== "B" && !state.isFac && state.tab === "B") state.tab = "A";
-  return true;
+/* ---------- talking to the Worker ---------- */
+async function api(path, body) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ uid: state.uid, ...body }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "failed");
+  return res.json();
 }
-async function refetchStickies() {
-  const { data, error } = await sb.from("stickies").select("id, conversation, line_id, text, kind, author, created_at");
-  if (error) return;
-  state.stickies = (data || []).map((r) => ({ id: r.id, conv: r.conversation, line: r.line_id, text: r.text, kind: r.kind, author: r.author, at: new Date(r.created_at).getTime() }));
-  keepComposerRender();
-}
-async function refetchVotes() {
-  const { data, error } = await sb.from("votes").select("sticky_id, voter");
-  if (error) return;
-  state.votes = (data || []).map((r) => ({ sticky: r.sticky_id, voter: r.voter }));
-  keepComposerRender();
-}
-async function refetchCounts() {
-  const { data, error } = await sb.rpc("sticky_counts");
-  if (error) return;
-  const next = {};
-  (data || []).forEach((r) => { next[r.line_id] = Number(r.n); });
-  state.counts = next;
-}
-async function refetchKey() {
-  // Both return empty until that conversation reaches stage 2 — enforced by RLS.
-  const [k, t] = await Promise.all([
-    sb.from("answer_key").select("line_id, note"),
-    sb.from("takeaways").select("conversation, text"),
-  ]);
-  const key = {};
-  (k.data || []).forEach((r) => { key[r.line_id] = r.note; });
-  state.answerKey = key;
-  const tk = {};
-  (t.data || []).forEach((r) => { tk[r.conversation] = r.text; });
-  state.takeaways = tk;
-}
+
 async function refetchAll() {
-  await refetchControl();
-  await Promise.all([refetchStickies(), refetchVotes(), refetchCounts(), refetchKey()]);
-  keepComposerRender();
+  try {
+    const res = await fetch(`${API}/state?uid=${encodeURIComponent(state.uid)}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("state");
+    const s = await res.json();
+
+    const prev = state.control.active;
+    state.control = s.control;
+    state.stickies = s.stickies;
+    state.votes = s.votes;
+    state.counts = s.counts;
+    state.answerKey = s.answerKey;
+    state.takeaways = s.takeaways;
+
+    if (prev !== "B" && state.control.active === "B" && !state.isFac) {
+      state.tab = "B"; state.openComposer = null; announce("Conversation 2 is open.");
+    }
+    if (state.control.active !== "B" && !state.isFac && state.tab === "B") state.tab = "A";
+
+    if (state.notice) { state.notice = null; }
+    keepComposerRender();
+  } catch (e) {
+    state.notice = "Lost the connection to the room. Still trying…";
+    render();
+  }
 }
 
 /* ---------- connect ---------- */
 (async () => {
-  const cfg = window.SPOT_CONFIG || {};
-  if (!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes("YOUR-PROJECT-REF") || !cfg.SUPABASE_ANON_KEY || cfg.SUPABASE_ANON_KEY.includes("YOUR-ANON-KEY")) {
-    state.offline = true; state.canWrite = false;
-    state.notice = "This page isn't connected to its database yet. Fill in config.js — see SETUP.md.";
-    render(); return;
+  // No accounts. A random id in localStorage is what makes "your stickies" mean
+  // something; it survives a refresh, which is why a reload never loses your work.
+  let uid = null;
+  try { uid = localStorage.getItem("spot-uid"); } catch (e) {}
+  if (!uid) {
+    uid = (crypto.randomUUID && crypto.randomUUID()) ||
+          String(Date.now()) + Math.random().toString(36).slice(2);
+    try { localStorage.setItem("spot-uid", uid); } catch (e) {}
   }
+  state.uid = uid;
 
-  sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, storageKey: "spot-the-moment-auth" },
-  });
-
-  let { data: sess } = await sb.auth.getSession();
-  if (!sess || !sess.session) {
-    const { data, error } = await sb.auth.signInAnonymously();
-    if (error || !data || !data.session) {
-      state.offline = true; state.canWrite = false;
-      state.notice = "Couldn't join the room. Refresh to try again — if it keeps happening, tell the facilitator.";
-      render(); return;
-    }
-    sess = { session: data.session };
-  }
-  state.uid = sess.session.user.id;
-
-  // ?f=<passcode> turns on the facilitator panel. The passcode is checked in
-  // Postgres, kept in sessionStorage so a refresh keeps the panel, and wiped
-  // from the address bar so it isn't read over a shoulder or shared by copy.
+  // ?f=<passcode> turns on the facilitator panel. The passcode is checked by the
+  // Worker, kept for this tab so a refresh keeps the panel, and wiped from the
+  // address bar so it isn't read over a shoulder or shared by copying the URL.
   const params = new URLSearchParams(location.search);
   const fromUrl = params.get("f");
   const pass = fromUrl || sessionStorage.getItem("spot-fac");
@@ -387,8 +350,8 @@ async function refetchAll() {
   }
   if (pass) {
     try {
-      const { data, error } = await sb.rpc("is_facilitator", { passcode: pass });
-      if (!error && data === true) { state.isFac = true; state.facPass = pass; sessionStorage.setItem("spot-fac", pass); }
+      const r = await api("/facilitator", { passcode: pass });
+      if (r.ok) { state.isFac = true; state.facPass = pass; sessionStorage.setItem("spot-fac", pass); }
       else sessionStorage.removeItem("spot-fac");
     } catch (e) { sessionStorage.removeItem("spot-fac"); }
   }
@@ -396,20 +359,9 @@ async function refetchAll() {
   await refetchAll();
   render();
 
-  // A control change alters what RLS lets you see, and changed visibility does
-  // not emit row events — so any control change refetches everything.
-  sb.channel("spot-control")
-    .on("postgres_changes", { event: "*", schema: "public", table: "control" }, () => { refetchAll(); })
-    .subscribe();
-  sb.channel("spot-stickies")
-    .on("postgres_changes", { event: "*", schema: "public", table: "stickies" }, () => { refetchStickies(); refetchCounts(); })
-    .subscribe();
-  sb.channel("spot-votes")
-    .on("postgres_changes", { event: "*", schema: "public", table: "votes" }, () => { refetchVotes(); })
-    .subscribe();
-
-  // Realtime can drop a message on flaky conference wifi; this is the floor.
-  setInterval(refetchAll, 3000);
+  // Polling is the whole sync mechanism. Two seconds is well inside what a
+  // conversation tolerates, and it has no connection to drop.
+  setInterval(refetchAll, 2000);
 })();
 
 /* re-render without losing a half-typed sticky */

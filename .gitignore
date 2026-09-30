@@ -1,5 +1,7 @@
-# The answer key, the takeaways, and the facilitator passcode live here.
-# This repo is public — this file must never be in it.
-supabase/seed-private.sql
+# The answer key, the takeaways, and the facilitator passcode.
+seed-private.sql
 
+node_modules
+.wrangler
+dist
 .DS_Store

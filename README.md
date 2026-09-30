@@ -20,39 +20,47 @@ every screen in the room switches to it.
 
 ## How it works
 
-Static files on GitHub Pages, with [Supabase](https://supabase.com) for shared
-state. `supabase-js` loads from a CDN — there is no build step and no
-`node_modules`.
+One Cloudflare Worker serves the page *and* a small JSON API, with a D1 (SQLite)
+database behind it. No build step, no framework, no bundler — `public/` ships
+as-is. `npm run deploy` is the whole pipeline.
 
-Each browser gets an anonymous Supabase identity on load, which is what lets the
-database tell "your stickies" from everyone else's without collecting a single
-name.
+Nobody signs in. Each browser makes a random id and keeps it in `localStorage`,
+which is all that's needed to know which stickies are yours. No names, no
+accounts, no email.
 
 | File | What's in it |
 |---|---|
-| `index.html` | Markup |
-| `styles.css` | Learning.com brand tokens, layout, dark mode |
-| `app.js` | The transcripts and the runtime |
-| `config.js` | Your Supabase project URL and anon key |
-| `supabase/schema.sql` | Tables, row-level security, the facilitator functions |
-| `supabase/seed-private.sql` | **Not in this repo.** The answer key and passcode. |
+| `public/index.html` | Markup |
+| `public/styles.css` | Learning.com brand tokens, layout, dark mode |
+| `public/app.js` | The transcripts and the runtime |
+| `src/worker/index.js` | The API, and every rule worth enforcing |
+| `migrations/0001_init.sql` | Tables |
+| `seed-private.sql` | **Not in this repo.** The answer key, takeaways and passcode. |
 
 ## Security
 
-This repo is public, so the rules are enforced in Postgres rather than in the
-page. The browser holds only the anon key, and row-level security decides what
-that key can actually read:
+Rules live in the Worker, not the page. The server simply never sends what you
+aren't entitled to:
 
-- You can read your own stickies always, everyone's only from stage 1.
-- You can write a sticky only as yourself, and only before stage 2.
-- The **answer key and takeaways are unreadable until that conversation reaches
-  stage 2** — they are not in this repo, not in the page source, and not in any
-  network response before the facilitator reveals them.
-- The facilitator passcode has no read policy at all. Nothing can select it.
-- Stages change only through `SECURITY DEFINER` functions that check the
-  passcode and raise on a bad one.
+- Another person's sticky **text** doesn't leave the server until stage 1. At
+  stage 0 you get a count and nothing more.
+- The **answer key and takeaways don't leave the server until stage 2** — they
+  are not in this repo, not in the page source, and not in any network response
+  before the facilitator reveals them.
+- The **passcode never leaves the server.** Stage changes are refused without it.
+- Adding and deleting are refused after stage 2; a +1 is refused on your own
+  sticky, and twice on anyone's.
+
+Identity is a browser-generated id, not a credential — this is a workshop for
+colleagues, not a system with adversaries. It decides whose stickies are whose;
+it is not relied on for anything secret.
 
 ## Setup
 
-See **[SETUP.md](SETUP.md)** — step by step, no prior Supabase experience
-assumed, with a test checklist to run before the session.
+```bash
+npm install && npm run db:migrate:local && npm run db:seed:local && npm run dev
+```
+
+That runs the whole thing at http://localhost:8787/ with **no Cloudflare login
+and no account**. See **[SETUP.md](SETUP.md)** for deploying it so other people
+can join, plus a test checklist to run before the session.
