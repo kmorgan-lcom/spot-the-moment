@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spot the Moment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Learning.com · Listening Tour prep</div>
+    <h1>Spot the Moment</h1>
+    <p>Two versions of the same district conversation. Tap any line where something's happening and add a sticky. Together we'll build the "what's happening" column. Stickies are anonymous.</p>
+  </header>
+
+  <section class="fac" id="fac" hidden aria-label="Facilitator controls">
+    <div class="fac-row">
+      <span class="fac-label">Conversation 1</span>
+      <div class="seg" role="group" aria-label="Conversation 1 stage" data-conv="A"></div>
+    </div>
+    <div class="fac-row">
+      <span class="fac-label">Conversation 2</span>
+      <div class="seg" role="group" aria-label="Conversation 2 stage" data-conv="B"></div>
+    </div>
+    <div class="fac-row">
+      <span class="fac-label">Room</span>
+      <button class="btn" id="unlockB" type="button"></button>
+      <button class="btn danger" id="clearBtn" type="button">Clear all stickies</button>
+      <span id="clearConfirm" hidden>
+        <span class="fac-note">Delete every sticky and +1?</span>
+        <button class="btn danger" id="clearYes" type="button">Yes, clear</button>
+        <button class="btn" id="clearNo" type="button">Keep them</button>
+      </span>
+      <span class="fac-note" id="facStats"></span>
+    </div>
+    <div class="fac-note">Only you see these controls. Everyone's screen follows the stage you pick.</div>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Conversations">
+    <button class="tab" role="tab" id="tabA" aria-controls="panel" data-conv="A" type="button">Conversation 1</button>
+    <button class="tab" role="tab" id="tabB" aria-controls="panel" data-conv="B" type="button">Conversation 2</button>
+  </div>
+
+  <section id="panel" role="tabpanel">
+    <div class="prompt">
+      <p id="promptText"></p>
+      <span class="stage-pill" id="stagePill"></span>
+    </div>
+    <div class="notice" id="notice" hidden></div>
+    <div class="columns-head" aria-hidden="true"><span>The conversation</span><span>What's happening</span></div>
+    <div id="lines"></div>
+    <div class="takeaway" id="takeaway" hidden>
+      <span class="eyebrow">What this conversation told us</span>
+      <p id="takeawayText"></p>
+    </div>
+  </section>
+  <div class="sr" aria-live="polite" id="live"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
