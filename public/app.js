@@ -150,7 +150,7 @@ function render() {
 
   const tk = $("#takeaway");
   const takeaway = state.takeaways[state.tab];
-  tk.hidden = stage < 2 || !takeaway;
+  tk.hidden = !takeaway;
   $("#takeawayText").textContent = takeaway || "";
 
   renderFac();

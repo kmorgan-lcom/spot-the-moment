@@ -46,7 +46,8 @@ button { font: inherit; cursor: pointer; }
 .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
 header h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 700; color: var(--navy); line-height: 1.1; margin-top: 4px; }
 header p { max-width: 62ch; margin: 8px 0 0; color: var(--muted); }
-header p span { display: block; }
+header ul { max-width: 62ch; margin: 10px 0 0; padding-left: 1.15em; color: var(--muted); }
+header ul li { margin-top: 2px; }
 
 /* Facilitator */
 .fac { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--orange-line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; }

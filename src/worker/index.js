@@ -64,19 +64,21 @@ async function getState(env, uid) {
   const voteRows = (await env.DB.prepare("select sticky_id, voter from votes").all()).results || [];
   const votes = voteRows.filter((v) => visibleIds.has(v.sticky_id));
 
-  // The key and the takeaway do not exist for anyone until stage 2.
+  // The per-line answer key does not exist for anyone until stage 2.
   let answerKey = [];
-  let takeaways = [];
   const revealed = ["A", "B"].filter((c) => stageFor(control, c) >= 2);
   if (revealed.length) {
     const marks = revealed.map(() => "?").join(",");
     answerKey = (await env.DB.prepare(
       `select line_id, note from answer_key where conversation in (${marks})`
     ).bind(...revealed).all()).results || [];
-    takeaways = (await env.DB.prepare(
-      `select conversation, body from takeaways where conversation in (${marks})`
-    ).bind(...revealed).all()).results || [];
   }
+
+  // The takeaway frames the exercise rather than answering it, so it is on
+  // screen from the start.
+  const takeaways = (await env.DB.prepare(
+    "select conversation, body from takeaways"
+  ).all()).results || [];
 
   return {
     control: { active: control.active, A: control.stage_a, B: control.stage_b },
