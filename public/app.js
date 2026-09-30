@@ -52,7 +52,6 @@ const CONVS = {
     ],
   },
 };
-const STAGES = ["Collecting stickies", "Everyone's stickies", "Answers revealed"];
 const STAGE_BTN = ["Collect", "Show everyone's", "Reveal answers"];
 
 const state = {
@@ -105,9 +104,6 @@ function render() {
     t.textContent = CONVS[c].label;
     if (locked) t.append(el("span", { class: "lock", text: "· opens soon" }));
   }
-
-  $("#promptText").innerHTML = conv.prompt;
-  $("#stagePill").textContent = STAGES[stage];
 
   const notice = $("#notice");
   if (state.notice) { notice.hidden = false; notice.textContent = state.notice; }

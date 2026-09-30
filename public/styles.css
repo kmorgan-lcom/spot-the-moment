@@ -35,6 +35,7 @@
   --key-bg: #1F4F6C; --key-ink: #FFFFFF; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; font-weight: 400; }
 .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
 h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
@@ -45,6 +46,7 @@ button { font: inherit; cursor: pointer; }
 .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
 header h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 700; color: var(--navy); line-height: 1.1; margin-top: 4px; }
 header p { max-width: 62ch; margin: 8px 0 0; color: var(--muted); }
+header p span { display: block; }
 
 /* Facilitator */
 .fac { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--orange-line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; }
@@ -66,11 +68,6 @@ header p { max-width: 62ch; margin: 8px 0 0; color: var(--muted); }
 .tab[disabled] { cursor: not-allowed; opacity: .6; }
 .lock { font-size: 12px; font-weight: 500; color: var(--muted); }
 
-/* Prompt */
-.prompt { margin-top: 18px; background: var(--tint); border-radius: 10px; padding: 14px 16px; display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
-.prompt strong { color: var(--navy); font-weight: 600; }
-.prompt p { margin: 0; max-width: 68ch; }
-.stage-pill { margin-left: auto; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface); color: var(--navy); border: 1px solid var(--line); white-space: nowrap; }
 .notice { margin-top: 12px; font-size: 14px; color: var(--muted); }
 
 /* Transcript */
