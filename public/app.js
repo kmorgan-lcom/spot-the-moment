@@ -59,7 +59,8 @@ const state = {
   control: { active: "A", A: 0, B: 0 },
   stickies: [],     // {id, conv, line, text, author, at, kind}
   votes: [],        // {sticky, voter}
-  counts: {},       // lineId -> total stickies on that line, from sticky_counts()
+  counts: {},       // lineId -> total stickies on that line, counted server-side
+  stats: {},        // room totals for the facilitator readout
   answerKey: {},    // lineId -> note, only readable at stage 2
   takeaways: {},    // conv -> text, only readable at stage 2
   uid: null,
@@ -207,9 +208,10 @@ function renderFac() {
   const ub = $("#unlockB");
   ub.textContent = state.control.active === "B" ? "Lock Conversation 2" : "Open Conversation 2 for everyone";
   ub.className = state.control.active === "B" ? "btn" : "btn primary";
-  const a = state.stickies.filter((s) => s.conv === "A").length, b = state.stickies.filter((s) => s.conv === "B").length;
-  const people = new Set(state.stickies.map((s) => s.author).filter(Boolean)).size;
-  $("#facStats").textContent = `${a} stickies on 1 · ${b} on 2 · from ${people} ${people === 1 ? "person" : "people"}`;
+  // From the server's totals, not from state.stickies -- at stage 0 you only
+  // hold your own stickies, so counting those would always read zero.
+  const { A: a = 0, B: b = 0, people = 0 } = state.stats || {};
+  $("#facStats").textContent = `${a} ${a === 1 ? "sticky" : "stickies"} on 1 · ${b} on 2 · from ${people} ${people === 1 ? "person" : "people"}`;
 }
 
 async function setStage(conv, stage) {
@@ -304,6 +306,7 @@ async function refetchAll() {
     state.stickies = s.stickies;
     state.votes = s.votes;
     state.counts = s.counts;
+    state.stats = s.stats || {};
     state.answerKey = s.answerKey;
     state.takeaways = s.takeaways;
 

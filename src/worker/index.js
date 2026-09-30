@@ -48,6 +48,14 @@ async function getState(env, uid) {
   const counts = {};
   for (const s of stickyRows) counts[s.line_id] = (counts[s.line_id] || 0) + 1;
 
+  // Totals for the facilitator's readout. Aggregates only -- the same numbers
+  // the per-line counts already imply, with no text and no author ids.
+  const stats = {
+    A: stickyRows.filter((s) => s.conversation === "A").length,
+    B: stickyRows.filter((s) => s.conversation === "B").length,
+    people: new Set(stickyRows.map((s) => s.author)).size,
+  };
+
   const visible = stickyRows.filter(
     (s) => s.author === uid || stageFor(control, s.conversation) >= 1
   );
@@ -78,6 +86,7 @@ async function getState(env, uid) {
     })),
     votes: votes.map((v) => ({ sticky: v.sticky_id, voter: v.voter })),
     counts,
+    stats,
     answerKey: Object.fromEntries(answerKey.map((r) => [r.line_id, r.note])),
     takeaways: Object.fromEntries(takeaways.map((r) => [r.conversation, r.body])),
   };
