@@ -17,7 +17,7 @@
       "binding": "DB",
       "database_name": "spot-the-moment-db",
       // `npx wrangler d1 create spot-the-moment-db` prints this. Paste it here.
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "cc59f79e-2fc6-4fe4-a185-5cdbe7ebdfa5"
     }
   ]
 }
